@@ -17,20 +17,40 @@ def extract_heuristics(path_heuristics):
         heuristics[el.split(': ')[0]] = float(el.split(': ')[1])
     return heuristics
 
+# funkcija switch preuzeta sa: https://www.javatpoint.com/how-to-swap-two-characters-in-a-string-in-python
+def switch(string, i1, i2):
+    char_list = list(string)
+    char_list[i1], char_list[i2] = char_list[i2], char_list[i1]
+    return "".join(char_list)
+
+def find_neighbours(node):
+    pos = node.index('x')
+    neighbours = []
+    if pos in [0, 1, 4, 5, 8, 9]:  # desno
+        neighbours.append(switch(node, pos, pos + 1))
+    if pos in [1, 2, 5, 6, 9, 10]:  # lijevo
+        neighbours.append(switch(node, pos, pos - 1))
+    if pos in [0, 1, 2, 4, 5, 6]:  # dolje
+        neighbours.append(switch(node, pos, pos + 4))
+    if pos in [4, 5, 6, 8, 9, 10]:  # gore
+        neighbours.append(switch(node, pos, pos - 4))
+    return neighbours
 
 # =============================================== I. DIO - ALGORITMI PRETRAŽIVANJA ===============================================
 
 def search_algorithms(alg, start_state, dest_state, heuristic_check):
     global graph, heuristics
 
-    arr_closed = []  # definiranje skupova open i closed
+    arr_closed = set()  # definiranje skupova open i closed
     queue = deque()
     queue.append((start_state, "", 0))
     trail = []
     while queue:
+        if len(queue) % 10000 == 0:
+            print(len(queue))
         current = queue.popleft()
         node = current[0]
-        arr_closed.append(node)
+        arr_closed.add(node)
         trail.append(current)
         if node in dest_state:
             if not heuristic_check:
@@ -55,12 +75,18 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
             else:
                 return trail[-1][2]
         if alg == 'bfs':
-            neighbours = list(graph[node].keys())
+            if path[0:2] == '3x3':
+                neighbours = find_neighbours(node)
+            else:
+                neighbours = list(graph[node].keys())
             for n in sorted(neighbours):
                 if n not in arr_closed:
                     queue.append((n, current[0], current[2] + graph[current[0]][n]))
         if alg == 'ucs':
-            neighbours = list(graph[node].keys())
+            if path[0:2] == '3x3':
+                neighbours = find_neighbours(node)
+            else:
+                neighbours = list(graph[node].keys())
             for n in neighbours:
                 if n not in arr_closed:
                     queue.append((n, current[0], current[2] + graph[current[0]][n]))
@@ -75,6 +101,8 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
                         queue.append(
                             (n, current[0], current[2] + graph[current[0]][n] + heuristics[n] - heuristics[current[0]]))
             queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
+        if len(arr_closed) % 10000 == 0:
+            print(len(arr_closed))
 
 
 if '--alg' in args:
@@ -98,7 +126,7 @@ if '--alg' in args:
             path_heuristics = 'files/' + args[args.index('--h') + 1]
             heuristics = extract_heuristics(path_heuristics)
 
-        search_algorithms(algorithm, start_state, dest_state, False)
+        search_algorithms(algorithm, ss[0].strip() if path[0:2] == '3x3' else start_state, ss[1].strip() if path[0:2] == '3x3' else dest_state, False)
 
 # =============================================== II. DIO - PROVJERA HEURISTIČKE FUNKCIJE ===============================================
 

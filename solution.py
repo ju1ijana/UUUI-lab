@@ -26,10 +26,9 @@ if '--h' in args:
     path_heuristics = 'files/' + args[args.index('--h') + 1]
     with open(path_heuristics, 'r', encoding='utf-8') as f:
         h = [line.rstrip() for line in f.readlines()]
-
-heuristics = {}
-for el in h:
-    heuristics[el.split(': ')[0]] = float(el.split(': ')[1])
+    heuristics = {}
+    for el in h:
+        heuristics[el.split(': ')[0]] = float(el.split(': ')[1])
 
 arr_closed = []
 queue = deque()
@@ -54,13 +53,8 @@ while queue:
             found_path.insert(0, prev)
             prev = next((t for t in trail if t[0] == found_path[0]), None)[1]
         print('[PATH_LENGTH]:', len(found_path))
-        if algorithm in ['bfs', 'ucs']:
+        if algorithm in ['bfs', 'ucs', 'astar']:
             print("[TOTAL_COST]:", trail[-1][2])
-        if algorithm == 'astar':
-            cost = trail[-1][2]
-            for hnode in found_path[1:]:
-                cost -= heuristics[hnode]
-            print("[TOTAL_COST]:", cost)
         print("[PATH]: ", end='')
         print(" => ".join(found_path))
         exit(0)
@@ -79,6 +73,10 @@ while queue:
         neighbours = list(graph[node].keys())
         for n in neighbours:
             if n not in arr_closed:
-                queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n]))
+                #queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n]))
+                if current[0] == start_state:
+                    queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n]))
+                else:
+                    queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n] - heuristics[current[0]]))
         queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
 

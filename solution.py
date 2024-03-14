@@ -46,8 +46,6 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
     queue.append((start_state, "", 0))
     trail = []
     while queue:
-        if len(queue) % 10000 == 0:
-            print(len(queue))
         current = queue.popleft()
         node = current[0]
         arr_closed.add(node)
@@ -67,30 +65,32 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
                     found_path.insert(0, prev)
                     prev = next((t for t in trail if t[0] == found_path[0]), None)[1]
                 print('[PATH_LENGTH]:', len(found_path))
-                if algorithm in ['bfs', 'ucs', 'astar']:
-                    print("[TOTAL_COST]:", trail[-1][2])
+                print("[TOTAL_COST]:", float(trail[-1][2]))
                 print("[PATH]: ", end='')
                 print(" => ".join(found_path))
                 exit(0)
             else:
                 return trail[-1][2]
         if alg == 'bfs':
-            if path[0:2] == '3x3':
+            if args[args.index('--ss') + 1][0:3] == '3x3':
                 neighbours = find_neighbours(node)
             else:
                 neighbours = list(graph[node].keys())
             for n in sorted(neighbours):
                 if n not in arr_closed:
-                    queue.append((n, current[0], current[2] + graph[current[0]][n]))
+                    queue.append((n, current[0], current[2] + 1))
         if alg == 'ucs':
-            if path[0:2] == '3x3':
+            if args[args.index('--ss') + 1][0:3].strip() == '3x3':
                 neighbours = find_neighbours(node)
+                for n in neighbours:
+                    if n not in arr_closed:
+                        queue.append((n, current[0], current[2] + 1))
             else:
                 neighbours = list(graph[node].keys())
-            for n in neighbours:
-                if n not in arr_closed:
-                    queue.append((n, current[0], current[2] + graph[current[0]][n]))
-            queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
+                for n in neighbours:
+                    if n not in arr_closed:
+                        queue.append((n, current[0], current[2] + graph[current[0]][n]))
+                queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
         if alg == 'astar':
             neighbours = list(graph[node].keys())
             for n in neighbours:
@@ -101,8 +101,6 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
                         queue.append(
                             (n, current[0], current[2] + graph[current[0]][n] + heuristics[n] - heuristics[current[0]]))
             queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
-        if len(arr_closed) % 10000 == 0:
-            print(len(arr_closed))
 
 
 if '--alg' in args:
@@ -113,14 +111,15 @@ if '--alg' in args:
     algorithm = args[args.index('--alg') + 1]
 
     if algorithm in ['bfs', 'ucs', 'astar']:
-        graph = {}  # rječnik za zapis grafa
-        heuristics = {}
-        for el in ss[2:]:
-            curr_node = el.split(':')[0]
-            graph[curr_node] = {}  # ključevi su stanja...
-            for e in el.split(':')[1].split(' '):
-                if e != '':
-                    graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])  # ..., a vrijednosti susjedi tog stanja
+        if args[args.index('--ss') + 1][0:3] != '3x3':
+            graph = {}  # rječnik za zapis grafa
+            heuristics = {}
+            for el in ss[2:]:
+                curr_node = el.split(':')[0]
+                graph[curr_node] = {}  # ključevi su stanja...
+                for e in el.split(':')[1].split(' '):
+                    if e != '':
+                        graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])  # ..., a vrijednosti susjedi tog stanja
 
         if '--h' in args:  # izdvajanje putanje do opisnika heuristike
             path_heuristics = 'files/' + args[args.index('--h') + 1]

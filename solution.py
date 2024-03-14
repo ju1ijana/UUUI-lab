@@ -22,6 +22,15 @@ if algorithm in ['bfs', 'ucs']:
             if e != '':
                 graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])
 
+if '--h' in args:
+    path_heuristics = 'files/' + args[args.index('--h') + 1]
+    with open(path_heuristics, 'r', encoding='utf-8') as f:
+        h = [line.rstrip() for line in f.readlines()]
+
+heuristics = {}
+for el in h:
+    heuristics[el.split(': ')[0]] = float(el.split(': ')[1])
+
 arr_closed = []
 queue = deque()
 queue.append((start_state, "", 0))

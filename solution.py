@@ -110,13 +110,13 @@ if '--check-consistent' in args:  # traži se provjera konzistentnosti
 
     for state in sorted(heuristics):
         for neighbour in sorted(list(graph[state].keys())):
-            expression = 'h(' + state + ') <= h(' + neighbour + ') + c: ' + str(heuristics[state]) + ' <= ' + str(heuristics[neighbour]) + ' + ' + str(graph[state][neighbour])
             if heuristics[state] <= heuristics[neighbour] + graph[state][neighbour]:
                 print('[CONDITION]: [OK] ', end='')
             else:
                 print('[CONDITION]: [ERR] ', end='')
                 is_consistent = False
-            print(expression)
+            print('h(' + state + ') <= h(' + neighbour + ') + c: ' + str(heuristics[state]), end='')
+            print(' <= ' + str(heuristics[neighbour]) + ' + ' + str(graph[state][neighbour]))
     print('[CONCLUSION]: Heuristic is ' + ('' if is_consistent else 'not ') + 'consistent.')
 
 if '--is-optimistic' in args:

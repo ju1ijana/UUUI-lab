@@ -1,5 +1,6 @@
 import sys
 from collections import deque
+from queue import PriorityQueue
 
 args = sys.argv[1:]
 
@@ -39,7 +40,7 @@ def find_neighbours(node):
 # =============================================== I. DIO - ALGORITMI PRETRAŽIVANJA ===============================================
 
 def search_algorithms(alg, start_state, dest_state, heuristic_check):
-    global graph, heuristics
+    global graph, heuristics, puzzle
 
     arr_closed = set()  # definiranje skupova open i closed
     queue = deque()
@@ -72,7 +73,7 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
             else:
                 return trail[-1][2]
         if alg == 'bfs':
-            if args[args.index('--ss') + 1][0:3] == '3x3':
+            if puzzle:
                 neighbours = find_neighbours(node)
             else:
                 neighbours = list(graph[node].keys())
@@ -80,17 +81,11 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
                 if n not in arr_closed:
                     queue.append((n, current[0], current[2] + 1))
         if alg == 'ucs':
-            if args[args.index('--ss') + 1][0:3].strip() == '3x3':
-                neighbours = find_neighbours(node)
-                for n in neighbours:
-                    if n not in arr_closed:
-                        queue.append((n, current[0], current[2] + 1))
-            else:
-                neighbours = list(graph[node].keys())
-                for n in neighbours:
-                    if n not in arr_closed:
-                        queue.append((n, current[0], current[2] + graph[current[0]][n]))
-                queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
+            neighbours = list(graph[node].keys())
+            for n in neighbours:
+                if n not in arr_closed:
+                    queue.append((n, current[0], current[2] + graph[current[0]][n]))
+            queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
         if alg == 'astar':
             neighbours = list(graph[node].keys())
             for n in neighbours:
@@ -103,15 +98,45 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
             queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
 
 
+def ucs_3x3(start_state, dest_state):
+    arr_closed = set()
+    queue = PriorityQueue()
+    queue.put((0, start_state, ""))
+    trail = []
+    while queue:
+        current = queue.get()
+        node = current[1]
+        arr_closed.add(node)
+        trail.append(current)
+        if node in dest_state:
+            print("# UCS\n[FOUND_SOLUTION]: yes")
+            print('[STATES_VISITED]:', len(arr_closed))
+            found_path = [trail[-1][1]]
+            prev = next((t for t in trail if t[1] == found_path[0]), None)[2]
+            while prev != "":
+                found_path.insert(0, prev)
+                prev = next((t for t in trail if t[1] == found_path[0]), None)[2]
+            print('[PATH_LENGTH]:', len(found_path))
+            print("[TOTAL_COST]:", float(trail[-1][0]))
+            print("[PATH]: ", end='')
+            print(" => ".join(found_path))
+            exit(0)
+        neighbours = find_neighbours(node)
+        for n in neighbours:
+            if n not in arr_closed:
+                queue.put((1 + current[0], n, node))
+
+
 if '--alg' in args:
 
     start_state = ss[0]  # početno stanje
     dest_state = ss[1].split(' ')  # odredišna stanja
 
     algorithm = args[args.index('--alg') + 1]
+    puzzle = args[args.index('--ss') + 1][0:3] == '3x3'
 
     if algorithm in ['bfs', 'ucs', 'astar']:
-        if args[args.index('--ss') + 1][0:3] != '3x3':
+        if not puzzle:
             graph = {}  # rječnik za zapis grafa
             heuristics = {}
             for el in ss[2:]:
@@ -125,7 +150,11 @@ if '--alg' in args:
             path_heuristics = 'files/' + args[args.index('--h') + 1]
             heuristics = extract_heuristics(path_heuristics)
 
-        search_algorithms(algorithm, ss[0].strip() if path[0:2] == '3x3' else start_state, ss[1].strip() if path[0:2] == '3x3' else dest_state, False)
+
+        if algorithm != 'ucs' or (algorithm == 'ucs' and not puzzle):
+            search_algorithms(algorithm, ss[0].strip() if puzzle else start_state, ss[1].strip() if puzzle else dest_state, False)
+        else:
+            ucs_3x3(ss[0].strip(), ss[1].strip())
 
 # =============================================== II. DIO - PROVJERA HEURISTIČKE FUNKCIJE ===============================================
 

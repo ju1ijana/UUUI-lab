@@ -4,27 +4,27 @@ from queue import PriorityQueue
 
 args = sys.argv[1:]
 
-path = 'files/' + args[args.index('--ss') + 1]  # izdvajanje putanje do opisnika prostora stanja
+path = args[args.index('--ss') + 1]                                     # izdvajanje putanje do opisnika prostora stanja
 with open(path, 'r', encoding='utf-8') as f:
     ss = [line.rstrip() for line in f.readlines()]
-ss = [el for el in ss if el != '#']
+ss = [el for el in ss if el != '#']                                     # pročitana datoteka s opisnikom stanja (sve osim komentara)
 
 
-def extract_heuristics(path_heuristics):
+def extract_heuristics(path_heuristics):                                # funkcija za čitanje opisnika heuristike
     with open(path_heuristics, 'r', encoding='utf-8') as f:
         h = [line.rstrip() for line in f.readlines()]
     heuristics = {}
-    for el in h:  # zapis heuristike pojedinih stanja u rječnik
+    for el in h:                                                        # zapis heuristike pojedinih stanja u rječnik
         heuristics[el.split(': ')[0]] = float(el.split(': ')[1])
     return heuristics
 
 # funkcija switch preuzeta sa: https://www.javatpoint.com/how-to-swap-two-characters-in-a-string-in-python
-def switch(string, i1, i2):
+def switch(string, i1, i2):                                             # pomoćna funkcija za određivanje sljedećeg stanja za 3x3_puzzle
     char_list = list(string)
     char_list[i1], char_list[i2] = char_list[i2], char_list[i1]
     return "".join(char_list)
 
-def find_neighbours(node):
+def find_neighbours(node):                                              # implicitna funkcija sljedbenika za 3x3_puzzle
     pos = node.index('x')
     neighbours = []
     if pos in [0, 1, 4, 5, 8, 9]:  # desno
@@ -39,13 +39,13 @@ def find_neighbours(node):
 
 # =============================================== I. DIO - ALGORITMI PRETRAŽIVANJA ===============================================
 
-def search_algorithms(alg, start_state, dest_state, heuristic_check):
+def search_algorithms(alg, start_state, dest_state, heuristic_check):   # zajednička funkcija za sve algoritme pretraživanja
     global graph, heuristics, puzzle
 
-    arr_closed = set()  # definiranje skupova open i closed
+    arr_closed = set()                                                  # definiranje skupova open (queue) i closed
     queue = deque()
     queue.append((start_state, "", 0))
-    trail = []
+    trail = []                                                          # potrebno za rekonsturiranje puta od početnog do konačnog stanja
     while queue:
         current = queue.popleft()
         node = current[0]
@@ -60,7 +60,7 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
                 if alg == 'astar':
                     print("# A-STAR " + str(args[args.index('--h') + 1]) + "\n[FOUND_SOLUTION]: yes")
                 print('[STATES_VISITED]:', len(arr_closed))
-                found_path = [trail[-1][0]]
+                found_path = [trail[-1][0]]                             # rekonstrukcija puta od početnog do konačnog stanja
                 prev = next((t for t in trail if t[0] == found_path[0]), None)[1]
                 while prev != "":
                     found_path.insert(0, prev)
@@ -71,21 +71,21 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
                 print(" => ".join(found_path))
                 exit(0)
             else:
-                return trail[-1][2]
-        if alg == 'bfs':
+                return trail[-1][2]                                     # jer funkciju koristimo i u provjeri heuristike (bitna samo udaljenost)
+        if alg == 'bfs':                                                # algoritam je BFS
             if puzzle:
                 neighbours = find_neighbours(node)
             else:
                 neighbours = list(graph[node].keys())
             for n in sorted(neighbours):
                 if n not in arr_closed:
-                    queue.append((n, current[0], current[2] + 1))
-        if alg == 'ucs':
+                    queue.append((n, current[0], current[2] + graph[current[0]][n]))
+        if alg == 'ucs':                                                # algoritam je UCS
             neighbours = list(graph[node].keys())
             for n in neighbours:
                 if n not in arr_closed:
                     queue.append((n, current[0], current[2] + graph[current[0]][n]))
-            queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
+            queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))    # sortiranje prvo po cijeni, a onda abecedno po imenu stanja
         if alg == 'astar':
             neighbours = list(graph[node].keys())
             for n in neighbours:
@@ -98,7 +98,7 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):
             queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
 
 
-def ucs_3x3(start_state, dest_state):
+def ucs_3x3(start_state, dest_state):                                   # USC funkcija za 3x3_puzzle (koristi PriorityQueue)
     arr_closed = set()
     queue = PriorityQueue()
     queue.put((0, start_state, ""))
@@ -127,38 +127,38 @@ def ucs_3x3(start_state, dest_state):
                 queue.put((1 + current[0], n, node))
 
 
-if '--alg' in args:
+if '--alg' in args:                                                     # --alg je u argumentima -> izvođenje nekog algoritma pretraživanja
 
-    start_state = ss[0]  # početno stanje
-    dest_state = ss[1].split(' ')  # odredišna stanja
+    start_state = ss[0]                                                 # početno stanje
+    dest_state = ss[1].split(' ')                                       # odredišna stanja
 
     algorithm = args[args.index('--alg') + 1]
-    puzzle = args[args.index('--ss') + 1][0:3] == '3x3'
+    puzzle = args[args.index('--ss') + 1][0:3] == '3x3'                 # bool varijabla koja određuje radi li se o zadatku s 3x3_puzzle
 
     if algorithm in ['bfs', 'ucs', 'astar']:
-        if not puzzle:
-            graph = {}  # rječnik za zapis grafa
+        if not puzzle:                                                  # funkciju prijelaza zapisujemo samo ako se ne radi o 3x3_puzzle
+            graph = {}                                                  # rječnik za zapis grafa (funkcije prijelaza)
             heuristics = {}
             for el in ss[2:]:
                 curr_node = el.split(':')[0]
-                graph[curr_node] = {}  # ključevi su stanja...
+                graph[curr_node] = {}                                   # ključevi su stanja...
                 for e in el.split(':')[1].split(' '):
                     if e != '':
-                        graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])  # ..., a vrijednosti susjedi tog stanja
+                        graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])      # ..., a vrijednosti susjedi tog stanja
 
-        if '--h' in args:  # izdvajanje putanje do opisnika heuristike
+        if '--h' in args:                                               # izdvajanje putanje do opisnika heuristike (ako postoji)
             path_heuristics = 'files/' + args[args.index('--h') + 1]
             heuristics = extract_heuristics(path_heuristics)
 
-
-        if algorithm != 'ucs' or (algorithm == 'ucs' and not puzzle):
+        if algorithm != 'ucs' or (algorithm == 'ucs' and not puzzle):   # pozivanje funkcije za algoritme pretraživanja ...
             search_algorithms(algorithm, ss[0].strip() if puzzle else start_state, ss[1].strip() if puzzle else dest_state, False)
         else:
-            ucs_3x3(ss[0].strip(), ss[1].strip())
+            ucs_3x3(ss[0].strip(), ss[1].strip())                       # ... osim ako se ne radi o UCS i 3x3_puzzle
+
 
 # =============================================== II. DIO - PROVJERA HEURISTIČKE FUNKCIJE ===============================================
 
-graph = {}  # zapis grafa (stanja i susjeda)
+graph = {}                                                              # zapis grafa (stanja i susjeda)
 for el in ss[2:]:
     curr_node = el.split(':')[0]
     graph[curr_node] = {}
@@ -166,18 +166,18 @@ for el in ss[2:]:
         if e != '':
             graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])
 
-if '--h' in args:  # izdvajanje putanje do opisnika heuristike
+if '--h' in args:                                                       # izdvajanje putanje do opisnika heuristike
     path_heuristics = 'files/' + args[args.index('--h') + 1]
     heuristics = extract_heuristics(path_heuristics)
 
-if '--check-consistent' in args:  # traži se provjera konzistentnosti
+if '--check-consistent' in args:                                        # traži se provjera konzistentnosti
     is_consistent = True
 
     print('# HEURISTIC-CONSISTENT ' + str(args[args.index('--h') + 1]))
 
     for state in sorted(heuristics):
         for neighbour in sorted(list(graph[state].keys())):
-            if heuristics[state] <= heuristics[neighbour] + graph[state][neighbour]:
+            if heuristics[state] <= heuristics[neighbour] + graph[state][neighbour]:    # provjera h(s1) ≤ h(s2) + c
                 print('[CONDITION]: [OK] ', end='')
             else:
                 print('[CONDITION]: [ERR] ', end='')
@@ -186,7 +186,7 @@ if '--check-consistent' in args:  # traži se provjera konzistentnosti
             print(' <= ' + str(heuristics[neighbour]) + ' + ' + str(graph[state][neighbour]))
     print('[CONCLUSION]: Heuristic is ' + ('' if is_consistent else 'not ') + 'consistent.')
 
-if '--check-optimistic' in args:
+if '--check-optimistic' in args:                                        # traži se provjera optimističnosti
     is_optimistic = True
 
     print('# HEURISTIC-OPTIMISTIC ' + str(args[args.index('--h') + 1]))
@@ -194,8 +194,8 @@ if '--check-optimistic' in args:
     dest_state = ss[1].split(' ')
 
     for state in sorted(heuristics):
-        h_star = search_algorithms('ucs', state, dest_state, True)
-        if heuristics[state] <= h_star:
+        h_star = search_algorithms('ucs', state, dest_state, True)      # određivanje stvarne udaljenosti od ciljnog stanja
+        if heuristics[state] <= h_star:                                 # provjera h(s) ≤ h*(s)
             print('[CONDITION]: [OK] ', end='')
         else:
             print('[CONDITION]: [ERR] ', end='')

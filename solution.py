@@ -79,7 +79,10 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):   # zajedn
                 neighbours = list(graph[node].keys())
             for n in sorted(neighbours):
                 if n not in arr_closed:
-                    queue.append((n, current[0], current[2] + graph[current[0]][n]))
+                    if not puzzle:
+                        queue.append((n, current[0], current[2] + graph[current[0]][n]))
+                    else:
+                        queue.append((n, current[0], current[2] + 1))
         if alg == 'ucs':                                                # algoritam je UCS
             neighbours = list(graph[node].keys())
             for n in neighbours:
@@ -89,12 +92,21 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):   # zajedn
         if alg == 'astar':
             neighbours = list(graph[node].keys())
             for n in neighbours:
-                if n not in arr_closed:
-                    if current[0] == start_state:
-                        queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n]))
-                    else:
-                        queue.append(
-                            (n, current[0], current[2] + graph[current[0]][n] + heuristics[n] - heuristics[current[0]]))
+                if current[0] == start_state:
+                    queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n]))
+                else:
+                    to_append = (n, current[0], current[2] + graph[current[0]][n] + heuristics[n] - heuristics[current[0]])
+                    index_remove_open = [i for i, item in enumerate(queue) if item[0] == n and item[2] > to_append[2]]
+                    if index_remove_open:
+                        for i in index_remove_open:
+                            queue.remove(queue[i])
+                    if [i for i, item in enumerate(queue) if item[0] == n and item[2] < to_append[2]]:
+                        continue
+                    index_remove_closed = [i for i, item in enumerate(trail) if item[0] == n and item[2] > to_append[2]]
+                    if index_remove_closed:
+                        for i in index_remove_closed:
+                            trail.remove(trail[i])
+                    queue.append(to_append)
             queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
 
 
@@ -147,7 +159,7 @@ if '--alg' in args:                                                     # --alg 
                         graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])      # ..., a vrijednosti susjedi tog stanja
 
         if '--h' in args:                                               # izdvajanje putanje do opisnika heuristike (ako postoji)
-            path_heuristics = 'files/' + args[args.index('--h') + 1]
+            path_heuristics = args[args.index('--h') + 1]
             heuristics = extract_heuristics(path_heuristics)
 
         if algorithm != 'ucs' or (algorithm == 'ucs' and not puzzle):   # pozivanje funkcije za algoritme pretraživanja ...
@@ -167,7 +179,7 @@ for el in ss[2:]:
             graph[curr_node][e.split(',')[0]] = float(e.split(',')[1])
 
 if '--h' in args:                                                       # izdvajanje putanje do opisnika heuristike
-    path_heuristics = 'files/' + args[args.index('--h') + 1]
+    path_heuristics = args[args.index('--h') + 1]
     heuristics = extract_heuristics(path_heuristics)
 
 if '--check-consistent' in args:                                        # traži se provjera konzistentnosti

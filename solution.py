@@ -46,6 +46,7 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):   # zajedn
     queue = deque()
     queue.append((start_state, "", 0))
     trail = []                                                          # potrebno za rekonsturiranje puta od početnog do konačnog stanja
+    i = 0
     while queue:
         current = queue.popleft()
         node = current[0]
@@ -60,7 +61,7 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):   # zajedn
                 if alg == 'astar':
                     print("# A-STAR " + str(args[args.index('--h') + 1]) + "\n[FOUND_SOLUTION]: yes")
                 print('[STATES_VISITED]:', len(arr_closed))
-                found_path = [trail[-1][0]]                             # rekonstrukcija puta od početnog do konačnog stanja
+                found_path = [trail[-1][0]]                             # rekonstrukcija puta od početnog do konačnog stanja (backtracking)
                 prev = next((t for t in trail if t[0] == found_path[0]), None)[1]
                 while prev != "":
                     found_path.insert(0, prev)
@@ -92,21 +93,25 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):   # zajedn
         if alg == 'astar':
             neighbours = list(graph[node].keys())
             for n in neighbours:
-                if current[0] == start_state:
-                    queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n]))
-                else:
+                if n not in arr_closed:
+                    if current[0] == start_state:
+                        queue.append((n, current[0], current[2] + graph[current[0]][n] + heuristics[n]))
+                    else:
+                        to_append = (n, current[0], current[2] + graph[current[0]][n] + heuristics[n] - heuristics[current[0]])
+                        dont_add_to_open = [i for i, item in enumerate(queue) if item[0] == n and item[2] < to_append[2]]
+                        should_remove_from_open = [i for i, item in enumerate(queue) if item[0] == n and item[2] > to_append[2]]
+                        if should_remove_from_open:
+                            for i in should_remove_from_open:
+                                queue.remove(queue[i])
+                        if (not dont_add_to_open) or should_remove_from_open:
+                            queue.append(to_append)
+                if n in arr_closed:
                     to_append = (n, current[0], current[2] + graph[current[0]][n] + heuristics[n] - heuristics[current[0]])
-                    index_remove_open = [i for i, item in enumerate(queue) if item[0] == n and item[2] > to_append[2]]
-                    if index_remove_open:
-                        for i in index_remove_open:
-                            queue.remove(queue[i])
-                    if [i for i, item in enumerate(queue) if item[0] == n and item[2] < to_append[2]]:
-                        continue
                     index_remove_closed = [i for i, item in enumerate(trail) if item[0] == n and item[2] > to_append[2]]
                     if index_remove_closed:
                         for i in index_remove_closed:
                             trail.remove(trail[i])
-                    queue.append(to_append)
+                            arr_closed.remove(trail[i][0])
             queue = deque(sorted(queue, key=lambda q: (q[2], q[0])))
 
 
@@ -136,7 +141,7 @@ def ucs_3x3(start_state, dest_state):                                   # USC fu
         neighbours = find_neighbours(node)
         for n in neighbours:
             if n not in arr_closed:
-                queue.put((1 + current[0], n, node))
+                queue.put((1 + current[0], n, node))                    # queue će biti sortiran po cijeni pa abecedno po imenu čvora
 
 
 if '--alg' in args:                                                     # --alg je u argumentima -> izvođenje nekog algoritma pretraživanja

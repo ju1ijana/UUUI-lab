@@ -16,7 +16,6 @@ def Not(c):
         return '~' + c
 
 
-# noinspection PyRedundantParentheses
 def resolve(combination):
     global clauses, clause_index
     c1, c2 = combination
@@ -26,6 +25,7 @@ def resolve(combination):
             if ' v '.join(new_cl) not in clauses_set:
                 clauses_set.add(' v '.join(new_cl))
                 clause_index += 1
+                # noinspection PyRedundantParentheses
                 return (' v '.join(new_cl), clause_index, str(c1[1]) + ' + ' + str(c2[1]))
     return None
 
@@ -33,7 +33,9 @@ def resolve(combination):
 def resolution():
     global clauses, clause_index, clauses_set
     closed = set()
-    for _ in range(3):
+    changed = True
+    while changed:
+        changed = False
         print("clauses:", clauses)
         new = []
         clause_index = clauses[-1][1]
@@ -42,6 +44,7 @@ def resolution():
                 closed.add(combination)
                 res = resolve(combination)
                 if res:
+                    changed = True
                     new.append(res)
                     print(new)
                     if res[0] == '':
@@ -53,7 +56,8 @@ def resolution():
 
 
 clauses = ss
-clauses[-1] = '~' + clauses[-1]         # negiranje
+clauses[-1] = ' v '.join([Not(el) for el in clauses[-1].split(' v ')])
+
 
 for index, el in enumerate(clauses):
     print(str(index + 1) + '. ' + el)
@@ -64,9 +68,8 @@ print('===============')
 clause_index = clauses[-1][1]
 clauses_set = set(el[0] for el in clauses)
 resolution()
+
 print("final clauses:", clauses)
-
-
 
 
 

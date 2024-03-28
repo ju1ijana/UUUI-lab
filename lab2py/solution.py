@@ -11,13 +11,14 @@ with open(path, 'r', encoding='utf-8') as f:
     ss = [line.rstrip() for line in f.readlines()]
 ss = [el.lower() for el in ss if '#' not in el]
 
-def Not(c):
+def Not(c):                                                                          # funkcija koja vraća negaciju atoma
     if c[0] == '~':
         return c[1:]
     else:
         return '~' + c
 
 def find_clause_by_number(number):
+    global clauses
     c = [x for x in clauses if x[1] == number]
     if c:
         return c[0]
@@ -31,7 +32,7 @@ def resolve(combination):
             new_cl = [a for a in c1[0].split(' v ') if a != atom] + [b for b in c2[0].split(' v ') if b != Not(atom)]
             if ' v '.join(new_cl) not in clauses_set:
                 clauses_set.add(' v '.join(new_cl))
-                clause_index += 1
+                clause_index += 1                                                    # brojač klauzula povećan za 1
                 # noinspection PyRedundantParentheses
                 return (' v '.join(new_cl), clause_index, str(c1[1]) + ' + ' + str(c2[1]))
     return None
@@ -75,8 +76,7 @@ for index, el in enumerate(clauses):
 
 
 if 'resolution' in args:
-    # definiranje varijabli koje će se koristiti globalno
-    clause_index = clauses[-1][1]
+    clause_index = clauses[-1][1]                                                    # definiranje varijabli koje će se koristiti globalno
     clauses_set = set(el[0] for el in clauses)
     resolution()
 

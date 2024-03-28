@@ -1,6 +1,7 @@
 import sys
 from itertools import combinations
 from collections import deque
+import copy
 
 args = sys.argv[1:]
 
@@ -41,6 +42,8 @@ def resolution():
     closed = set()
     changed = True
     while changed:
+        #print(clauses)
+        #print()
         changed = False
         #print("clauses:", clauses)
         new = []
@@ -63,48 +66,55 @@ def resolution():
 
 clauses = ss
 clauses[-1] = ' v '.join([Not(el) for el in clauses[-1].split(' v ')])
+original_clauses = copy.deepcopy(clauses)  # pospremanje za slučaj da je unknown
+
 
 original_clauses_index = len(clauses)
 for index, el in enumerate(clauses):
-    print(str(index + 1) + '. ' + el)
     clauses[index] = (clauses[index], index + 1, '')
-print('===============')
-
-# definiranje varijabli koje će se koristiti globalno
-clause_index = clauses[-1][1]
-clauses_set = set(el[0] for el in clauses)
-resolution()
 
 
-if clauses[-1][0] == '':
-    queue = deque()
-    queue.extend([int(x) for x in clauses[-1][2].split(' + ')])
-    requirements = [clauses[-1][1]]
-    while queue:
-        requirements.append(queue.popleft())
-        clause = find_clause_by_number(requirements[-1])
-        queue.extend([int(x) for x in clause[2].split(' + ') if x != ''])
-    requirements = sorted([x for x in requirements if not (x <= original_clauses_index)])
-    requirements_dict = {}
-    i = original_clauses_index
-    for el in requirements:
-        i += 1
-        requirements_dict[el] = i
+if 'resolution' in args:
+    # definiranje varijabli koje će se koristiti globalno
+    clause_index = clauses[-1][1]
+    clauses_set = set(el[0] for el in clauses)
+    resolution()
 
-    for el in requirements:
-        clause = find_clause_by_number(el)
-        c = clause[0] if clause[0] != '' else 'NIL'
-        a = int(clause[2].split(' + ')[0])
-        if a in requirements_dict:
-            a = requirements_dict[a]
-        b = int(clause[2].split(' + ')[1])
-        if b in requirements_dict:
-            b = requirements_dict[b]
-        print(str(requirements_dict[el]) + '. ' + c + ' (' + str(a) + ', ' + str(b) + ')')
-    print('===============')
-    print('[CONCLUSION]: ' + str(' v '.join([Not(el) for el in find_clause_by_number(original_clauses_index)[0].split(' v ')])) + ' is true')
-else:
-    print('[CONCLUSION]: ' + str(' v '.join([Not(el) for el in find_clause_by_number(original_clauses_index)[0].split(' v ')])) + ' is unknown')
+    if clauses[-1][0] == '':
+        queue = deque()
+        queue.extend([int(x) for x in clauses[-1][2].split(' + ')])
+        requirements = [clauses[-1][1]]
+        while queue:
+            requirements.append(queue.popleft())
+            clause = find_clause_by_number(requirements[-1])
+            queue.extend([int(x) for x in clause[2].split(' + ') if x != ''])
+        requirements = sorted(requirements)
+        requirements = [x for i, x in enumerate(requirements) if requirements.index(x) == i]
+        requirements_dict = {}
+        i = 0
+        for el in requirements:
+            i += 1
+            requirements_dict[el] = i
+
+        original_cl = [x for x in requirements if x <= original_clauses_index]
+        for num in original_cl:
+            print(str(requirements_dict[num]) + '. ' + find_clause_by_number(num)[0])
+        print('===============')
+
+        added_cl = [x for x in requirements if x > original_clauses_index]
+        for el in added_cl:
+            clause = find_clause_by_number(el)
+            c = clause[0] if clause[0] != '' else 'NIL'
+            a = requirements_dict[int(clause[2].split(' + ')[0])]
+            b = requirements_dict[int(clause[2].split(' + ')[1])]
+            print(str(requirements_dict[el]) + '. ' + c + ' (' + str(a) + ', ' + str(b) + ')')
+        print('===============')
+        print('[CONCLUSION]: ' + str(' v '.join([Not(el) for el in find_clause_by_number(original_clauses_index)[0].split(' v ')])) + ' is true')
+    else:
+        for index, el in enumerate(original_clauses):
+            print(str(index + 1) + '. ' + el)
+        print('===============')
+        print('[CONCLUSION]: ' + str(' v '.join([Not(el) for el in find_clause_by_number(original_clauses_index)[0].split(' v ')])) + ' is unknown')
 
 
 

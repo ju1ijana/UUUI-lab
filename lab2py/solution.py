@@ -67,7 +67,8 @@ def resolution():
 
 
 clauses = ss
-clauses[-1] = ' v '.join([Not(el) for el in clauses[-1].split(' v ')])
+goal_clause = clauses.pop()
+clauses += [Not(x) for x in goal_clause.split(' v ')]
 original_clauses = copy.deepcopy(clauses)  # pospremanje za slučaj da je unknown
 
 
@@ -110,12 +111,12 @@ if 'resolution' in args:
             b = requirements_dict[int(clause[2].split(' + ')[1])]
             print(str(requirements_dict[el]) + '. ' + c + ' (' + str(a) + ', ' + str(b) + ')')
         print('===============')
-        print('[CONCLUSION]: ' + str(' v '.join([Not(el) for el in find_clause_by_number(original_clauses_index)[0].split(' v ')])) + ' is true')
+        print('[CONCLUSION]: ' + goal_clause + ' is true')
     else:
         for index, el in enumerate(original_clauses):
             print(str(index + 1) + '. ' + el)
         print('===============')
-        print('[CONCLUSION]: ' + str(' v '.join([Not(el) for el in find_clause_by_number(original_clauses_index)[0].split(' v ')])) + ' is unknown')
+        print('[CONCLUSION]: ' + goal_clause + ' is unknown')
 
 
 

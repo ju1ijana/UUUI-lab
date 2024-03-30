@@ -11,17 +11,18 @@ with open(path, 'r', encoding='utf-8') as f:
     ss = [line.rstrip() for line in f.readlines()]
 ss = [el.lower() for el in ss if '#' not in el]
 
-def Not(c):                                                                          # funkcija koja vraća negaciju atoma
+
+def Not(c):  # funkcija koja vraća negaciju atoma
     if c[0] == '~':
         return c[1:]
     else:
         return '~' + c
 
+
 def find_clause_by_number(number):
     global clauses
     c = [x for x in clauses if x[1] == number]
-    if c:
-        return c[0]
+    return c[0] if c else None
 
 
 def resolve(combination):
@@ -31,15 +32,13 @@ def resolve(combination):
         if Not(atom) in c2[0].split(' v '):
             new_cl = [a for a in c1[0].split(' v ') if a != atom] + [b for b in c2[0].split(' v ') if b != Not(atom)]
             new_cl = [x for i, x in enumerate(new_cl) if new_cl.index(x) == i]
-            # uklanjanje valjanih klauzula
-            for c in new_cl:
+            for c in new_cl:  # uklanjanje valjanih klauzula
                 if Not(c) in new_cl:
                     return None
             if ' v '.join(new_cl) not in clauses_set:
                 clauses_set.add(' v '.join(new_cl))
-                clause_index += 1                                                    # brojač klauzula povećan za 1
-                # noinspection PyRedundantParentheses
-                return (' v '.join(new_cl), clause_index, str(c1[1]) + ' + ' + str(c2[1]))
+                clause_index += 1  # brojač klauzula povećan za 1
+                return ' v '.join(new_cl), clause_index, str(c1[1]) + ' + ' + str(c2[1])
     return None
 
 
@@ -58,28 +57,26 @@ def resolution():
                 if res:
                     changed = True
                     new.append(res)
-                    #print(new)
+                    # print(new)
                     if res[0] == '':
                         clauses += new
                         return
         clauses += new
 
 
-
-
-clauses = ss
-goal_clause = clauses.pop()
-clauses += [Not(x) for x in goal_clause.split(' v ')]
-original_clauses = copy.deepcopy(clauses)  # pospremanje za slučaj da je unknown
-
-
-original_clauses_index = len(clauses)
-for index, el in enumerate(clauses):
-    clauses[index] = (clauses[index], index + 1, '')
-
+# =============================================== I. DIO - REZOLUCIJA OPOVRGAVANJEM ===============================================
 
 if 'resolution' in args:
-    clause_index = clauses[-1][1]                                                    # definiranje varijabli koje će se koristiti globalno
+    clauses = ss
+    goal_clause = clauses.pop()
+    clauses += [Not(x) for x in goal_clause.split(' v ')]
+    original_clauses = copy.deepcopy(clauses)  # pospremanje za ispis kad je ciljna klauzula unknown
+
+    original_clauses_index = len(clauses)
+    for index, el in enumerate(clauses):
+        clauses[index] = (clauses[index], index + 1, '')
+
+    clause_index = clauses[-1][1]  # definiranje varijabli koje će se koristiti globalno
     clauses_set = set(el[0] for el in clauses)
     resolution()
 
@@ -91,8 +88,7 @@ if 'resolution' in args:
             requirements.append(queue.popleft())
             clause = find_clause_by_number(requirements[-1])
             queue.extend([int(x) for x in clause[2].split(' + ') if x != ''])
-        requirements = sorted(requirements)
-        requirements = [x for i, x in enumerate(requirements) if requirements.index(x) == i]
+        requirements = sorted([x for i, x in enumerate(requirements) if requirements.index(x) == i])
         requirements_dict = {}
         i = 0
         for el in requirements:
@@ -118,12 +114,3 @@ if 'resolution' in args:
             print(str(index + 1) + '. ' + el)
         print('===============')
         print('[CONCLUSION]: ' + goal_clause + ' is unknown')
-
-
-
-
-
-
-
-
-

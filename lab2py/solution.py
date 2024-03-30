@@ -31,6 +31,10 @@ def resolve(combination):
         if Not(atom) in c2[0].split(' v '):
             new_cl = [a for a in c1[0].split(' v ') if a != atom] + [b for b in c2[0].split(' v ') if b != Not(atom)]
             new_cl = [x for i, x in enumerate(new_cl) if new_cl.index(x) == i]
+            # uklanjanje valjanih klauzula
+            for c in new_cl:
+                if Not(c) in new_cl:
+                    return None
             if ' v '.join(new_cl) not in clauses_set:
                 clauses_set.add(' v '.join(new_cl))
                 clause_index += 1                                                    # brojač klauzula povećan za 1
@@ -44,10 +48,7 @@ def resolution():
     closed = set()
     changed = True
     while changed:
-        #print(clauses)
-        #print()
         changed = False
-        #print("clauses:", clauses)
         new = []
         clause_index = clauses[-1][1]
         for combination in combinations(clauses, 2):
@@ -62,7 +63,7 @@ def resolution():
                         clauses += new
                         return
         clauses += new
-        #print()
+
 
 
 

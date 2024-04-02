@@ -46,7 +46,6 @@ def search_algorithms(alg, start_state, dest_state, heuristic_check):   # zajedn
     queue = deque()
     queue.append((start_state, "", 0))
     trail = []                                                          # potrebno za rekonsturiranje puta od početnog do konačnog stanja
-    i = 0
     while queue:
         current = queue.popleft()
         node = current[0]

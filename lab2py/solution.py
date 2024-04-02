@@ -63,22 +63,8 @@ def resolution():
         clauses += new
 
 
-# =============================================== I. DIO - REZOLUCIJA OPOVRGAVANJEM ===============================================
-
-if 'resolution' in args:
-    clauses = ss
-    goal_clause = clauses.pop()
-    clauses += [Not(x) for x in goal_clause.split(' v ')]
-    original_clauses = copy.deepcopy(clauses)  # pospremanje za ispis kad je ciljna klauzula unknown
-
-    original_clauses_index = len(clauses)
-    for index, el in enumerate(clauses):
-        clauses[index] = (clauses[index], index + 1, '')
-
-    clause_index = clauses[-1][1]  # definiranje varijabli koje će se koristiti globalno
-    clauses_set = set(el[0] for el in clauses)
-    resolution()
-
+def result(goal_clause, cooking):
+    global clauses, original_clauses_index
     if clauses[-1][0] == '':
         queue = deque()
         queue.extend([int(x) for x in clauses[-1][2].split(' + ')])
@@ -109,7 +95,62 @@ if 'resolution' in args:
         print('===============')
         print('[CONCLUSION]: ' + goal_clause + ' is true')
     else:
-        for index, el in enumerate(original_clauses):
-            print(str(index + 1) + '. ' + el)
-        print('===============')
+        if not cooking:
+            for index, el in enumerate(original_clauses):
+                print(str(index + 1) + '. ' + el)
+            print('===============')
         print('[CONCLUSION]: ' + goal_clause + ' is unknown')
+
+
+# =============================================== I. DIO - REZOLUCIJA OPOVRGAVANJEM ===============================================
+
+if 'resolution' in args:
+    clauses = ss
+    goal_clause = clauses.pop()
+    clauses += [Not(x) for x in goal_clause.split(' v ')]
+    original_clauses = copy.deepcopy(clauses)  # pospremanje za ispis kad je ciljna klauzula unknown
+
+    original_clauses_index = len(clauses)
+    for index, el in enumerate(clauses):
+        clauses[index] = (clauses[index], index + 1, '')
+
+    clause_index = clauses[-1][1]  # definiranje varijabli koje će se koristiti globalno
+    clauses_set = set(el[0] for el in clauses)
+    resolution()
+    result(goal_clause, False)
+
+# ================================================== II. DIO - KUHARSKI ASISTENT ==================================================
+
+if 'cooking' in args:
+    start_clauses = ss
+    print('Constructed with knowledge:')
+    for c in start_clauses:
+        print(c)
+
+    for index, el in enumerate(start_clauses):
+        start_clauses[index] = (start_clauses[index], index + 1, '')
+
+    path = 'C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab2\\files\\' + args[2]
+
+    with open(path, 'r', encoding='utf-8') as f:
+        commands = [line.rstrip() for line in f.readlines()]
+    commands = [el.lower() for el in commands if '#' not in el]
+
+    for com in commands:
+        print("\nUser\'s command:", com)
+        if com[-1] == '?':
+            clauses = copy.deepcopy(start_clauses)
+            for element in [Not(x) for x in com[:-1].strip().split(' v ')]:
+                clauses.append((element, clauses[-1][1] + 1, ''))
+            original_clauses_index = clauses[-1][1]
+            clause_index = clauses[-1][1]
+            clauses_set = set(el[0] for el in clauses)
+            resolution()
+            result(com[:-1].strip(), True)
+        if com[-1] == '-':
+            start_clauses = [el for el in start_clauses if el[0] != com[:-1].strip()]
+            print('Removed', com[:-1].strip())
+        if com[-1] == '+':
+            if not any(el[0] == com[:-1].strip() for el in start_clauses):
+                start_clauses.append((com[:-1].strip(), start_clauses[-1][1] + 1, ''))
+                print('Added', com[:-1].strip())

@@ -1,5 +1,5 @@
 import sys
-from itertools import combinations
+from itertools import product
 from collections import deque
 import copy
 
@@ -24,15 +24,16 @@ def find_clause_by_number(number):                                      # funkci
 
 
 def resolve(combination):                                               # funkcija za razrješavanje klauzula
-    global clauses, clause_index, clauses_set, removed_clauses
+    global clauses, clause_index, clauses_set, removed_clauses, real_start_clauses, combine_with_clauses
     c1, c2 = combination
     for atom in c1[0].split(' v '):
         if Not(atom) in c2[0].split(' v '):
             new_cl = [a for a in c1[0].split(' v ') if a != atom] + [b for b in c2[0].split(' v ') if b != Not(atom)]
+            new_cl = set(new_cl)
             for c in new_cl:                                            # uklanjanje valjanih klauzula
                 if Not(c) in new_cl:
                     return None
-            new_cl = sorted([x for i, x in enumerate(new_cl) if new_cl.index(x) == i], key=lambda x: x.lstrip('~'))
+            new_cl = sorted(new_cl, key=lambda x: x.lstrip('~'))
             if ' v '.join(new_cl) != '':                                # uklanjanje redundantnih klauzula (micanje C2 ako je C1 ⊆ C2)
                 for cl in clauses:
                     if ' v '.join(list(set(new_cl) & set(cl[0].split(' v ')))) == ' v '.join(new_cl):
@@ -45,14 +46,14 @@ def resolve(combination):                                               # funkci
 
 
 def resolution():                                                       # funkcija rezolucija opovrgavanjem
-    global clauses, clause_index, clauses_set, removed_clauses
+    global clauses, clause_index, clauses_set, removed_clauses, start_clauses, combine_with_clauses
     closed = set()
     changed = True
     while changed:
         changed = False
         new = []
         clause_index = clauses[-1][1]
-        for combination in combinations(clauses, 2):
+        for combination in product(start_clauses, combine_with_clauses):
             if combination not in closed and not (combination[0][0] in removed_clauses or combination[1][0] in removed_clauses):
                 closed.add(combination)
                 res = resolve(combination)
@@ -62,6 +63,8 @@ def resolution():                                                       # funkci
                     if res[0] == '':
                         clauses += new
                         return
+        start_clauses += combine_with_clauses
+        combine_with_clauses = copy.deepcopy(new)
         clauses += new
 
 
@@ -109,7 +112,20 @@ def result(goal_clause, cooking):                                       # funkci
 if 'resolution' in args:                                                # zadatak je rezolucija opovrgavanjem
     clauses = ss
     goal_clause = clauses.pop()
+
+    start_clauses = []                                                  # skup početnih premisa (roditeljske klauzule)
+    i = 1
+    for index, el in enumerate(clauses):
+        start_clauses.append((clauses[index], index + 1, ''))
+        i += 1
+
     clauses += [Not(x) for x in goal_clause.split(' v ')]
+
+    combine_with_clauses = []                                           # skup koji je u početku negirani cilj, a kasnije izvedene klauzule
+    for x in goal_clause.split(' v '):
+        combine_with_clauses.append((Not(x), i, ''))
+        i += 1
+
     original_clauses = copy.deepcopy(clauses)                           # pospremanje za ispis kad je ciljna klauzula unknown
 
     original_clauses_index = len(clauses)
@@ -122,16 +138,17 @@ if 'resolution' in args:                                                # zadata
     resolution()
     result(goal_clause, False)
 
+
 # ================================================== II. DIO - KUHARSKI ASISTENT ==================================================
 
 if 'cooking' in args:                                                   # zadatak je kuharski asistent
-    start_clauses = ss
+    real_start_clauses = ss
     print('Constructed with knowledge:')                                # početni ispis
-    for c in start_clauses:
+    for c in real_start_clauses:
         print(c)
 
-    for index, el in enumerate(start_clauses):
-        start_clauses[index] = (start_clauses[index], index + 1, '')
+    for index, el in enumerate(real_start_clauses):
+        real_start_clauses[index] = (real_start_clauses[index], index + 1, '')
 
     with open(args[2], 'r', encoding='utf-8') as f:
         commands = [line.rstrip() for line in f.readlines()]
@@ -140,9 +157,12 @@ if 'cooking' in args:                                                   # zadata
     for com in commands:                                                # ispitivanje o kojoj se korisničkoj naredbi radi
         print("\nUser\'s command:", com)
         if com[-1] == '?':                                              # traži se rezolucija opovrgavanjem
-            clauses = copy.deepcopy(start_clauses)
+            clauses = copy.deepcopy(real_start_clauses)
+            start_clauses = copy.deepcopy(real_start_clauses)
+            combine_with_clauses = []
             for element in [Not(x) for x in com[:-1].strip().split(' v ')]:
                 clauses.append((element, clauses[-1][1] + 1, ''))
+                combine_with_clauses.append((element, clauses[-1][1], ''))
             original_clauses_index = clauses[-1][1]
             clause_index = clauses[-1][1]
             clauses_set = set(el[0] for el in clauses)
@@ -150,9 +170,9 @@ if 'cooking' in args:                                                   # zadata
             resolution()
             result(com[:-1].strip(), True)
         if com[-1] == '-':                                              # micanje klauzule iz skupa klauzula
-            start_clauses = [el for el in start_clauses if el[0] != com[:-1].strip()]
+            real_start_clauses = [el for el in real_start_clauses if el[0] != com[:-1].strip()]
             print('Removed', com[:-1].strip())
         if com[-1] == '+':                                              # dodavanje klauzule u skup klauzula
-            if not any(el[0] == com[:-1].strip() for el in start_clauses):
-                start_clauses.append((com[:-1].strip(), start_clauses[-1][1] + 1, ''))
+            if not any(el[0] == com[:-1].strip() for el in real_start_clauses):
+                real_start_clauses.append((com[:-1].strip(), real_start_clauses[-1][1] + 1, ''))
                 print('Added', com[:-1].strip())

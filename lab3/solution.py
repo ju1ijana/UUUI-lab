@@ -1,5 +1,6 @@
 import sys
 import pandas as pd
+from collections import deque
 import math
 
 
@@ -18,6 +19,8 @@ def entropy_of_dataset_by_values(table, feature, value, outcome_name):          
 
 
 def ID3_algrithm(feature, value, dataset, outcome_name):
+    print(dataset)
+    print()
     global df
     if not feature and not value:                                                                   # radi se o prvom pozivu funkcije
         E_D = 0                                                                         # entropija početnog skupa primjera (sl. 70)
@@ -35,24 +38,47 @@ def ID3_algrithm(feature, value, dataset, outcome_name):
             ED_v = entropy_of_dataset_by_values(dataset, k1, k2, outcome_name)
             IG[k1] -= dataset[k1].value_counts().get(k2, 0) / dataset[k1].count() * ED_v
 
+    if all(IG.values()) == 0:
+        return True, dataset[outcome_name].unique()[0]
+
     sorted_IG = sorted(IG.items(), key=lambda x: x[1], reverse=True)
     for k, v in sorted_IG:
-        print('IG(' + k + ')=' + str(round(v, 4)), end=' ')
+        print('IG(' + k + ')=' + "{:.4f}".format(round(v, 4)), end=' ')
     print()
 
     max_key = max(sorted(IG.items()), key=lambda x: x[1])[0]                        # odabir značajke s najvećom IG i abecedno
-    return max_key
+    return False, max_key
 
 
 class ID3:
+    def __init__(self):
+        self.start_node = None
+        self.adj_matrix = {}
 
     def fit(self, train_dataset):
         dataset = train_dataset
         chosen_node = ID3_algrithm(False, False, dataset, train_dataset.columns[-1])
-        print(chosen_node)
-        for f in dataset[chosen_node].unique():
-            print(ID3_algrithm(chosen_node, f, dataset[dataset[chosen_node] == f].drop(chosen_node, axis=1), dataset.columns[-1]))
-            #exit(0)
+        self.start_node = chosen_node[1]
+        queue = deque()
+        queue.extend([chosen_node])
+        while queue:
+            current = queue.popleft()
+            column = current[1]
+            for f in dataset[column].unique():
+                self.adj_matrix.setdefault(current[1], [])
+                self.adj_matrix[current[1]].append(f)
+
+                chosen_node = ID3_algrithm(current[1], f, dataset[dataset[current[1]] == f].drop(current[1], axis=1), dataset.columns[-1])
+                self.adj_matrix.setdefault(f, [])
+                self.adj_matrix[f].append(chosen_node[1])
+
+                #if not chosen_node[0]:
+                 #   if chosen_node[1] == 'humidity':
+                  #      queue.extend([chosen_node])
+                print('\t', self.adj_matrix)
+            #dataset = dataset.drop(column, axis=1)
+
+
 
     def predict(self, test_dataset):
         a = 2

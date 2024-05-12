@@ -1,3 +1,4 @@
+import copy
 import sys
 import pandas as pd
 from collections import deque
@@ -18,18 +19,18 @@ def entropy_of_dataset_by_values(table, feature, value, outcome_name):          
     return ret
 
 
-def ID3_algrithm(feature, value, dataset, outcome_name):
-    print(dataset)
-    print()
-    global df
-    if not feature and not value:                                                                   # radi se o prvom pozivu funkcije
-        E_D = 0                                                                         # entropija početnog skupa primjera (sl. 70)
-        outcome_values = dataset[outcome_name].value_counts()
-        for i in outcome_values:
-            E_D -= (i / sum(outcome_values)) * math.log(i / sum(outcome_values), 2)
-    else:
-        E_D = entropy_of_dataset_by_values(df, feature, value, outcome_name)
+def ID3_algrithm(features, values):
+    global df, outcome_name
+    dataset = copy.deepcopy(df)
 
+    if features and values:
+        for f, v in zip(features, values):
+            dataset = dataset[dataset[f] == v].drop(f, axis=1)
+
+    E_D = 0                                                                         # entropija početnog skupa primjera (sl. 70)
+    outcome_values = dataset[outcome_name].value_counts()
+    for i in outcome_values:
+        E_D -= (i / sum(outcome_values)) * math.log(i / sum(outcome_values), 2)
 
     IG = {}                                                                         # računanje informacijske dobiti značajki (sl. 73)
     for k1 in dataset.columns[:-1]:
@@ -57,26 +58,49 @@ class ID3:
 
     def fit(self, train_dataset):
         dataset = train_dataset
-        chosen_node = ID3_algrithm(False, False, dataset, train_dataset.columns[-1])
-        self.start_node = chosen_node[1]
+        chosen_node = ID3_algrithm([], [])                                          # prvi poziv funkcije
+        self.start_node = chosen_node[1]                                            # pronađeni korijen stabla
         queue = deque()
-        queue.extend([chosen_node])
+        queue.extend([(chosen_node[1], [], [], chosen_node[0])])
         while queue:
             current = queue.popleft()
-            column = current[1]
+            column = current[0]
             for f in dataset[column].unique():
-                self.adj_matrix.setdefault(current[1], [])
-                self.adj_matrix[current[1]].append(f)
+                self.adj_matrix.setdefault(column, [])
+                self.adj_matrix[column].append(f)
 
-                chosen_node = ID3_algrithm(current[1], f, dataset[dataset[current[1]] == f].drop(current[1], axis=1), dataset.columns[-1])
+                chosen_node = ID3_algrithm(current[1] + [column], current[2] + [f])
                 self.adj_matrix.setdefault(f, [])
                 self.adj_matrix[f].append(chosen_node[1])
 
-                #if not chosen_node[0]:
-                 #   if chosen_node[1] == 'humidity':
-                  #      queue.extend([chosen_node])
-                print('\t', self.adj_matrix)
-            #dataset = dataset.drop(column, axis=1)
+                if not chosen_node[0]:
+                    queue.extend([(chosen_node[1], current[1] + [column], current[2] + [f], chosen_node[0])])
+
+        print('[BRANCHES]:')
+
+        def dfs(graph, node, path, paths):
+            path.append(node)
+
+            if node not in graph:
+                paths.append(path.copy())
+            else:
+                for neighbor in graph[node]:
+                    dfs(graph, neighbor, path, paths)
+
+            path.pop()
+
+        paths = []
+        path = []
+
+        dfs(self.adj_matrix, self.start_node, path, paths)
+
+        for p in paths:
+            for i in range(0, len(p), 2):
+                if i + 1 < len(p):
+                    print(int(i / 2) + 1, end=':')
+                    print(p[i], '=', p[i + 1], sep='', end=' ')
+                else:
+                    print(p[i])
 
 
 
@@ -89,6 +113,8 @@ class ID3:
 
 args = sys.argv[1:]
 df = pd.read_csv('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab3\\files\\' + args[0])
+outcome_name = df.columns[-1]
+
 
 model = ID3()
 model.fit(df)

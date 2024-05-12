@@ -55,6 +55,10 @@ class ID3:
     def __init__(self):
         self.start_node = None
         self.adj_matrix = {}
+        self.new_adj_matrix = {}
+        self.predictions = []
+        self.accuracy = []
+        self.confusion_matrix = {}
 
     def fit(self, train_dataset):
         dataset = train_dataset
@@ -76,6 +80,20 @@ class ID3:
                 if not chosen_node[0]:
                     queue.extend([(chosen_node[1], current[1] + [column], current[2] + [f], chosen_node[0])])
 
+
+        columns = list(dataset.columns)
+
+        for key, value in self.adj_matrix.items():                                  # transformiranje postojećeg stabla u pravilnije
+            if key in columns:
+                self.new_adj_matrix.setdefault(key, {x: '' for x in self.adj_matrix[key]})
+        for key, value in self.adj_matrix.items():
+            if key not in columns:
+                for k, v in self.new_adj_matrix.items():
+                    if key in v:
+                        v[key] = value[0]
+
+
+        # ============================================== kôd za ispis grana koji koristi prvu verziju stabla ==============================================
         print('[BRANCHES]:')
 
         def dfs(graph, node, path, paths):
@@ -102,19 +120,40 @@ class ID3:
                 else:
                     print(p[i])
 
+        # ============================================== kôd za ispis grana koji koristi prvu verziju stabla ==============================================
+
 
 
     def predict(self, test_dataset):
-        a = 2
 
-    def D_xv(self):
-        a = 3
+        for el in sorted(outcome_values):
+            self.confusion_matrix.setdefault(el, {x: 0 for x in sorted(outcome_values)})
+
+        for index, row in test_dataset.iterrows():
+            next_node = self.new_adj_matrix[self.start_node][row[self.start_node]]
+            while next_node not in outcome_values:
+                next_node = self.new_adj_matrix[next_node][row[next_node]]
+            self.predictions.append(next_node)
+            self.accuracy.append(next_node == row[outcome_name])
+            self.confusion_matrix[row[outcome_name]][next_node] += 1
+
+        print('[PREDICTIONS]: ', ' '.join(self.predictions), sep='')
+        print('[ACCURACY]: ', '{:.5f}'.format(round(sum(self.accuracy)/len(self.accuracy), 5)), sep='')
+        print('[CONFUSION_MATRIX]:')
+
+        for key, value in self.confusion_matrix.items():
+            for k, v in value.items():
+                print(v, end=' ')
+            print()
 
 
 args = sys.argv[1:]
 df = pd.read_csv('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab3\\files\\' + args[0])
 outcome_name = df.columns[-1]
+outcome_values = list(df[df.columns[-1]].unique())
 
+test = pd.read_csv('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab3\\files\\' + args[1])
 
 model = ID3()
 model.fit(df)
+model.predict(test)

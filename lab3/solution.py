@@ -39,7 +39,7 @@ def ID3_algrithm(features, values):
             ED_v = entropy_of_dataset_by_values(dataset, k1, k2, outcome_name)
             IG[k1] -= dataset[k1].value_counts().get(k2, 0) / dataset[k1].count() * ED_v
 
-    if all(IG.values()) == 0:
+    if all(value == 0 for value in IG.values()):
         return True, dataset[outcome_name].unique()[0]
 
     sorted_IG = sorted(IG.items(), key=lambda x: x[1], reverse=True)
@@ -70,48 +70,36 @@ class ID3:
             current = queue.popleft()
             column = current[0]
             for f in dataset[column].unique():
-                self.adj_matrix.setdefault(column, [])
-                self.adj_matrix[column].append(f)
+                self.adj_matrix.setdefault(column, {})
+                self.adj_matrix[column].setdefault(f, '')
 
                 chosen_node = ID3_algrithm(current[1] + [column], current[2] + [f])
-                self.adj_matrix.setdefault(f, [])
-                self.adj_matrix[f].append(chosen_node[1])
+                self.adj_matrix[column][f] = chosen_node[1]
 
                 if not chosen_node[0]:
                     queue.extend([(chosen_node[1], current[1] + [column], current[2] + [f], chosen_node[0])])
 
-
-        columns = list(dataset.columns)
-
-        for key, value in self.adj_matrix.items():                                  # transformiranje postojećeg stabla u pravilnije
-            if key in columns:
-                self.new_adj_matrix.setdefault(key, {x: '' for x in self.adj_matrix[key]})
-        for key, value in self.adj_matrix.items():
-            if key not in columns:
-                for k, v in self.new_adj_matrix.items():
-                    if key in v:
-                        v[key] = value[0]
-
-
-        # ============================================== kôd za ispis grana koji koristi prvu verziju stabla ==============================================
         print('[BRANCHES]:')
 
-        def dfs(graph, node, path, paths):
+        def dfs(tree, node, path=None):
+            if path is None:
+                path = []
+
+            paths = []
             path.append(node)
 
-            if node not in graph:
-                paths.append(path.copy())
+            if node in tree:
+                for key, value in tree[node].items():
+                    path.append(key)
+                    paths.extend(dfs(tree, value, path[:]))
+                    path.pop()
             else:
-                for neighbor in graph[node]:
-                    dfs(graph, neighbor, path, paths)
-
+                paths.append(path[:])
             path.pop()
 
-        paths = []
-        path = []
+            return paths
 
-        dfs(self.adj_matrix, self.start_node, path, paths)
-
+        paths = dfs(self.adj_matrix, self.start_node)
         for p in paths:
             for i in range(0, len(p), 2):
                 if i + 1 < len(p):
@@ -120,24 +108,21 @@ class ID3:
                 else:
                     print(p[i])
 
-        # ============================================== kôd za ispis grana koji koristi prvu verziju stabla ==============================================
-
-
 
     def predict(self, test_dataset):
-
         for el in sorted(outcome_values):
-            self.confusion_matrix.setdefault(el, {x: 0 for x in sorted(outcome_values)})
+            self.confusion_matrix.setdefault(el, {str(x): 0 for x in sorted(outcome_values)})
 
         for index, row in test_dataset.iterrows():
-            next_node = self.new_adj_matrix[self.start_node][row[self.start_node]]
+            next_node = self.adj_matrix[self.start_node][row[self.start_node]]
             while next_node not in outcome_values:
-                next_node = self.new_adj_matrix[next_node][row[next_node]]
-            self.predictions.append(next_node)
-            self.accuracy.append(next_node == row[outcome_name])
-            self.confusion_matrix[row[outcome_name]][next_node] += 1
+                next_node = self.adj_matrix[next_node][row[next_node]]
+            self.predictions.append(str(next_node))
+            self.accuracy.append(str(next_node) == str(row[outcome_name]))
+            self.confusion_matrix[row[str(outcome_name)]][str(next_node)] += 1
 
         print('[PREDICTIONS]: ', ' '.join(self.predictions), sep='')
+
         print('[ACCURACY]: ', '{:.5f}'.format(round(sum(self.accuracy)/len(self.accuracy), 5)), sep='')
         print('[CONFUSION_MATRIX]:')
 

@@ -110,13 +110,20 @@ class ID3:
 
 
     def predict(self, test_dataset):
-        for el in sorted(outcome_values):
+        for el in sorted(list(test_dataset[test_dataset.columns[-1]].unique())):
             self.confusion_matrix.setdefault(el, {str(x): 0 for x in sorted(outcome_values)})
 
-        for index, row in test_dataset.iterrows():
-            next_node = self.adj_matrix[self.start_node][row[self.start_node]]
-            while next_node not in outcome_values:
+        def test(next_node, test_dataset):
+            try:
                 next_node = self.adj_matrix[next_node][row[next_node]]
+                while next_node not in outcome_values:
+                    next_node = self.adj_matrix[next_node][row[next_node]]
+                return next_node
+            except KeyError:
+                return sorted(test_dataset[test_dataset.columns[-1]].unique())[0]
+
+        for index, row in test_dataset.iterrows():
+            next_node = test(self.start_node, test_dataset)
             self.predictions.append(str(next_node))
             self.accuracy.append(str(next_node) == str(row[outcome_name]))
             self.confusion_matrix[row[str(outcome_name)]][str(next_node)] += 1

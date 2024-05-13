@@ -20,7 +20,6 @@ def entropy_of_dataset_by_values(table, feature, value, outcome_name):          
 
 
 def ID3_algrithm(features, values):
-    #print("pozvano s", features, values)
     global df, outcome_name
     dataset = copy.deepcopy(df)
 
@@ -41,7 +40,6 @@ def ID3_algrithm(features, values):
             IG[k1] -= dataset[k1].value_counts().get(k2, 0) / dataset[k1].count() * ED_v
 
     if all(value == 0 for value in IG.values()):
-        #print("vraćam", True, dataset[outcome_name].unique()[0])
         return True, dataset[outcome_name].unique()[0]
 
     sorted_IG = sorted(IG.items(), key=lambda x: x[1], reverse=True)
@@ -50,7 +48,6 @@ def ID3_algrithm(features, values):
     print()
 
     max_key = max(sorted(IG.items()), key=lambda x: x[1])[0]                        # odabir značajke s najvećom IG i abecedno
-    #print("vraćam", False, max_key)
     return False, max_key
 
 
@@ -58,13 +55,18 @@ class ID3:
     def __init__(self):
         self.start_node = None
         self.adj_matrix = {}
-        self.new_adj_matrix = {}
+        self.test_features = {}
+        self.paths = []
         self.predictions = []
         self.accuracy = []
         self.confusion_matrix = {}
 
     def fit(self, train_dataset):
-        paths = []
+        for c in train_dataset.columns[:-1]:
+            self.test_features.setdefault(c, set())
+            for v in train_dataset[c].unique():
+                self.test_features[c].add(v)
+
         dataset = train_dataset
         chosen_node = ID3_algrithm([], [])                                          # prvi poziv funkcije
         self.start_node = chosen_node[1]                                            # pronađeni korijen stabla
@@ -81,14 +83,14 @@ class ID3:
                 self.adj_matrix[column][f] = chosen_node[1]
 
                 if chosen_node[0]:
-                    paths.append((current[1] + [column], current[2] + [f], chosen_node[1]))
+                    self.paths.append((current[1] + [column], current[2] + [f], chosen_node[1]))
 
                 if not chosen_node[0]:
                     queue.extend([(chosen_node[1], current[1] + [column], current[2] + [f], chosen_node[0])])
 
         print('[BRANCHES]:')
 
-        for path in paths:
+        for path in self.paths:
             i = 1
             for j in range(len(path[0])):
                 print(i, ':', path[0][j], '=', path[1][j], sep='', end=' ')
@@ -100,23 +102,28 @@ class ID3:
         for el in sorted(list(test_dataset[test_dataset.columns[-1]].unique())):
             self.confusion_matrix.setdefault(el, {str(x): 0 for x in sorted(outcome_values)})
 
-        def test(next_node, test_dataset):
-            try:
-                next_node = self.adj_matrix[next_node][row[next_node]]
-                while next_node not in outcome_values:
-                    next_node = self.adj_matrix[next_node][row[next_node]]
-                return next_node
-            except KeyError:
-                return sorted(test_dataset[test_dataset.columns[-1]].unique())[0]
+        def test_rule(row, rule):
+            extracted = []
+            for feature in rule[0]:
+                extract = row[feature]
+                if extract not in self.test_features[feature]:
+                    return True, sorted(test_dataset[test_dataset.columns[-1]].unique())[0]
+                extracted.append(extract)
+            return set(extracted) == set(rule[1]), rule[2]
+
 
         for index, row in test_dataset.iterrows():
-            next_node = test(self.start_node, test_dataset)
-            self.predictions.append(str(next_node))
-            self.accuracy.append(str(next_node) == str(row[outcome_name]))
-            self.confusion_matrix[row[str(outcome_name)]][str(next_node)] += 1
+            i = 0
+            result_status, result = test_rule(row, self.paths[i])
+            while not result_status:
+                i += 1
+                result_status, result = test_rule(row, self.paths[i])
+
+            self.predictions.append(result)
+            self.accuracy.append(result == row[outcome_name])
+            self.confusion_matrix[row[outcome_name]][result] += 1
 
         print('[PREDICTIONS]: ', ' '.join(self.predictions), sep='')
-
         print('[ACCURACY]: ', '{:.5f}'.format(round(sum(self.accuracy)/len(self.accuracy), 5)), sep='')
         print('[CONFUSION_MATRIX]:')
 
@@ -127,11 +134,11 @@ class ID3:
 
 
 args = sys.argv[1:]
-df = pd.read_csv('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab3\\files\\' + args[0])
+df = pd.read_csv('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab3\\files\\' + args[0], dtype=str)
 outcome_name = df.columns[-1]
 outcome_values = list(df[df.columns[-1]].unique())
 
-test = pd.read_csv('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab3\\files\\' + args[1])
+test = pd.read_csv('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab3\\files\\' + args[1], dtype=str)
 
 model = ID3()
 model.fit(df)

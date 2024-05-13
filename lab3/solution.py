@@ -20,6 +20,7 @@ def entropy_of_dataset_by_values(table, feature, value, outcome_name):          
 
 
 def ID3_algrithm(features, values):
+    #print("pozvano s", features, values)
     global df, outcome_name
     dataset = copy.deepcopy(df)
 
@@ -40,6 +41,7 @@ def ID3_algrithm(features, values):
             IG[k1] -= dataset[k1].value_counts().get(k2, 0) / dataset[k1].count() * ED_v
 
     if all(value == 0 for value in IG.values()):
+        #print("vraćam", True, dataset[outcome_name].unique()[0])
         return True, dataset[outcome_name].unique()[0]
 
     sorted_IG = sorted(IG.items(), key=lambda x: x[1], reverse=True)
@@ -48,6 +50,7 @@ def ID3_algrithm(features, values):
     print()
 
     max_key = max(sorted(IG.items()), key=lambda x: x[1])[0]                        # odabir značajke s najvećom IG i abecedno
+    #print("vraćam", False, max_key)
     return False, max_key
 
 
@@ -61,6 +64,7 @@ class ID3:
         self.confusion_matrix = {}
 
     def fit(self, train_dataset):
+        paths = []
         dataset = train_dataset
         chosen_node = ID3_algrithm([], [])                                          # prvi poziv funkcije
         self.start_node = chosen_node[1]                                            # pronađeni korijen stabla
@@ -69,44 +73,27 @@ class ID3:
         while queue:
             current = queue.popleft()
             column = current[0]
-            for f in dataset[column].unique():
+            for f in sorted(dataset[column].unique()):
                 self.adj_matrix.setdefault(column, {})
                 self.adj_matrix[column].setdefault(f, '')
 
                 chosen_node = ID3_algrithm(current[1] + [column], current[2] + [f])
                 self.adj_matrix[column][f] = chosen_node[1]
 
+                if chosen_node[0]:
+                    paths.append((current[1] + [column], current[2] + [f], chosen_node[1]))
+
                 if not chosen_node[0]:
                     queue.extend([(chosen_node[1], current[1] + [column], current[2] + [f], chosen_node[0])])
 
         print('[BRANCHES]:')
 
-        def dfs(tree, node, path=None):
-            if path is None:
-                path = []
-
-            paths = []
-            path.append(node)
-
-            if node in tree:
-                for key, value in tree[node].items():
-                    path.append(key)
-                    paths.extend(dfs(tree, value, path[:]))
-                    path.pop()
-            else:
-                paths.append(path[:])
-            path.pop()
-
-            return paths
-
-        paths = dfs(self.adj_matrix, self.start_node)
-        for p in paths:
-            for i in range(0, len(p), 2):
-                if i + 1 < len(p):
-                    print(int(i / 2) + 1, end=':')
-                    print(p[i], '=', p[i + 1], sep='', end=' ')
-                else:
-                    print(p[i])
+        for path in paths:
+            i = 1
+            for j in range(len(path[0])):
+                print(i, ':', path[0][j], '=', path[1][j], sep='', end=' ')
+                i += 1
+            print(path[2])
 
 
     def predict(self, test_dataset):

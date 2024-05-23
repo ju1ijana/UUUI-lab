@@ -65,6 +65,10 @@ def ID3_algrithm(features, values):
     if all(value == 0 for value in IG.values()):
         return True, extract_column(dataset, outcome_name)[0]
 
+    if depth == len(features):
+        outcomes = count_per_value(extract_column(dataset, outcome_name))
+        return True, min(key for key, value in outcomes.items() if value == max(outcomes.values()))
+
     sorted_IG = sorted(IG.items(), key=lambda x: x[1], reverse=True)
     for k, v in sorted_IG:
         print('IG(' + k + ')=' + "{:.4f}".format(round(v, 4)), end=' ')
@@ -89,31 +93,39 @@ class ID3:
             for v in set(extract_column(dataset, c)):
                 self.test_features[c].add(v)
 
-        chosen_node = ID3_algrithm([], [])                                      # prvi poziv funkcije
-        self.start_node = chosen_node[1]                                        # pronađeni korijen stabla
-        queue = deque()
-        queue.extend([(chosen_node[1], [], [], chosen_node[0])])                # spremanje imena značajke, vektora features i values i statusa
+        if depth == 0:
+            outcomes = count_per_value(extract_column(dataset, outcome_name))
+            self.paths.append(min(key for key, value in outcomes.items() if value == max(outcomes.values())))
 
-        while queue:
-            current = queue.popleft()
-            column = current[0]
-            for f in sorted(set(extract_column(dataset, column))):
-                chosen_node = ID3_algrithm(current[1] + [column], current[2] + [f])
+        else:
+            chosen_node = ID3_algrithm([], [])                                      # prvi poziv funkcije
+            self.start_node = chosen_node[1]                                        # pronađeni korijen stabla
+            queue = deque()
+            queue.extend([(chosen_node[1], [], [], chosen_node[0])])                # spremanje imena značajke, vektora features i values i statusa
 
-                if chosen_node[0]:
-                    self.paths.append((current[1] + [column], current[2] + [f], chosen_node[1]))
+            while queue:
+                current = queue.popleft()
+                column = current[0]
+                for f in sorted(set(extract_column(dataset, column))):
+                    chosen_node = ID3_algrithm(current[1] + [column], current[2] + [f])
 
-                if not chosen_node[0]:
-                    queue.extend([(chosen_node[1], current[1] + [column], current[2] + [f], chosen_node[0])])
+                    if chosen_node[0]:
+                        self.paths.append((current[1] + [column], current[2] + [f], chosen_node[1]))
+
+                    if not chosen_node[0]:
+                        queue.extend([(chosen_node[1], current[1] + [column], current[2] + [f], chosen_node[0])])
 
         print('[BRANCHES]:')
 
-        for path in self.paths:
-            i = 1
-            for j in range(len(path[0])):
-                print(i, ':', path[0][j], '=', path[1][j], sep='', end=' ')
-                i += 1
-            print(path[2])
+        if len(self.paths) == 1:
+            print(self.paths[0])
+        else:
+            for path in self.paths:
+                i = 1
+                for j in range(len(path[0])):
+                    print(i, ':', path[0][j], '=', path[1][j], sep='', end=' ')
+                    i += 1
+                print(path[2])
 
 
     def predict(self, test_dataset):
@@ -131,11 +143,14 @@ class ID3:
             return set(extracted) == set(rule[1]), rule[2]
 
         for index, row in enumerate(test_dataset):
-            i = 0
-            result_status, result = test_rule(row, self.paths[i])
-            while not result_status:
-                i += 1
+            if len(self.paths) != 1:
+                i = 0
                 result_status, result = test_rule(row, self.paths[i])
+                while not result_status:
+                    i += 1
+                    result_status, result = test_rule(row, self.paths[i])
+            else:
+                result = self.paths[0]
 
             self.predictions.append(result)
             self.accuracy.append(result == row[outcome_name])
@@ -180,6 +195,8 @@ with open(path, 'r') as f:
         for j, value in enumerate(line.strip().split(',')):
             test[i][columns[j]] = value
 
+
+depth = int(args[2]) if len(args) == 3 else None
 
 model = ID3()
 model.fit(df)

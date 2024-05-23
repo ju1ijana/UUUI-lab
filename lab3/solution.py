@@ -140,7 +140,7 @@ class ID3:
                 if extract not in self.test_features[feature]:
                     return True, sorted(extract_unique_values_of_feature(test_dataset, outcome_name))[0]
                 extracted.append(extract)
-            return set(extracted) == set(rule[1]), rule[2]
+            return extracted == rule[1], rule[2]
 
         for index, row in enumerate(test_dataset):
             if len(self.paths) != 1:
@@ -164,6 +164,7 @@ class ID3:
             for k, v in value.items():
                 print(v, end=' ')
             print()
+
 
 
 args = sys.argv[1:]

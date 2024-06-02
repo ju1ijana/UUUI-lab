@@ -21,33 +21,29 @@ def load_data(path):
     return data
 
 
-def get_weights(rows, columns):
-    return np.random.normal(0, 0.01, (rows, columns))
-
-
 class NeuralNetwork:
     def __init__(self, dimension, data, set_weights_and_biases, train):
         self.dimension = dimension
         self.data = data
         self.columns = list(data.keys())[:-1]
         self.layer_dimension = 5 if self.dimension in ['5s', '5s5s'] else 20
+        self.input_dimension = len(self.columns)
         self.weights = {}
         self.biases = {}
-        self.input_dimension = len(self.columns)
         self.y_hat = []
         self.err = None
         self.fitness = None
 
         if set_weights_and_biases:
-            self.weights['w1'] = get_weights(self.layer_dimension, self.input_dimension)
-            self.biases['b1'] = get_weights(self.layer_dimension, 1)
+            self.weights['w1'] = np.random.normal(0, 0.01, (self.layer_dimension, self.input_dimension))
+            self.biases['b1'] = np.random.normal(0, 0.01, (self.layer_dimension, 1))
 
             if self.dimension == '5s5s':
-                self.weights['w2'] = get_weights(self.layer_dimension, self.layer_dimension)
-                self.biases['b2'] = get_weights(self.layer_dimension, 1)
+                self.weights['w2'] = np.random.normal(0, 0.01, (self.layer_dimension, self.layer_dimension))
+                self.biases['b2'] = np.random.normal(0, 0.01, (self.layer_dimension, 1))
 
-            self.weights['w_out'] = get_weights(1, self.layer_dimension)
-            self.biases['b_out'] = get_weights(1, 1)
+            self.weights['w_out'] = np.random.normal(0, 0.01, (1, self.layer_dimension))
+            self.biases['b_out'] = np.random.normal(0, 0.01, (1, 1))
 
         if train:
             self.predict()
@@ -58,7 +54,6 @@ class NeuralNetwork:
 
 
     def forward(self, x):
-
         x = np.array(x)
 
         if x.ndim == 1:
@@ -106,25 +101,22 @@ def GenAlg(popsize, elitism, p, K, iter):
         fitness = [nn.fitness for nn in population]
         probabilities = [f/sum(fitness) for f in fitness]
         new_population = [population[i] for i in range(elitism)]
-        used_pairs = set()
 
         while len(new_population) != popsize:
             pair = np.random.choice(population, size=2, replace=False, p=probabilities).tolist()
-            if tuple(sorted([pair[0].fitness, pair[1].fitness])) not in used_pairs:
-                used_pairs.add(tuple(sorted([pair[0].fitness, pair[1].fitness])))
-                child = NeuralNetwork(dim, train_data, False, False)
-                for key in ['1', '2', '_out']:
-                    if 'w' + key in pair[0].weights:
-                        child.set_weights_and_biases(key, (pair[0].weights['w' + key] + pair[1].weights['w' + key]) / 2, (pair[0].biases['b' + key] + pair[1].biases['b' + key]) / 2)
+            child = NeuralNetwork(dim, train_data, False, False)
+            for key in ['1', '2', '_out']:
+                if 'w' + key in pair[0].weights:
+                    child.set_weights_and_biases(key, (pair[0].weights['w' + key] + pair[1].weights['w' + key]) / 2, (pair[0].biases['b' + key] + pair[1].biases['b' + key]) / 2)
 
-                for key, value in child.weights.items():
-                    child.weights[key] = mutate(child.weights[key], K, p)
+            for key, value in child.weights.items():
+                child.weights[key] = child.weights[key] + np.where(np.random.rand(*child.weights[key].shape) < p, np.random.normal(0, K, child.weights[key].shape), 0)
 
-                for key, value in child.biases.items():
-                    child.biases[key] = mutate(child.biases[key], K, p)
+            for key, value in child.biases.items():
+                child.biases[key] = child.biases[key] + np.where(np.random.rand(*child.biases[key].shape) < p, np.random.normal(0, K, child.biases[key].shape), 0)
 
-                child.predict()
-                new_population.append(child)
+            child.predict()
+            new_population.append(child)
 
         population = copy.deepcopy(new_population)
 

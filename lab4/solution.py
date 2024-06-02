@@ -1,5 +1,7 @@
 import sys
+import copy
 import numpy as np
+
 
 def load_data(path):
     data = {}
@@ -24,7 +26,7 @@ def get_weights(rows, columns):
 
 
 class NeuralNetwork:
-    def __init__(self, dimension, data):
+    def __init__(self, dimension, data, set_weights_and_biases, train):
         self.dimension = dimension
         self.data = data
         self.columns = list(data.keys())[:-1]
@@ -32,18 +34,27 @@ class NeuralNetwork:
         self.weights = {}
         self.biases = {}
         self.input_dimension = len(self.columns)
-        self.err = None
         self.y_hat = []
+        self.err = None
+        self.fitness = None
 
-        self.weights['w1'] = get_weights(self.layer_dimension, self.input_dimension)
-        self.biases['b1'] = get_weights(self.layer_dimension, 1)
+        if set_weights_and_biases:
+            self.weights['w1'] = get_weights(self.layer_dimension, self.input_dimension)
+            self.biases['b1'] = get_weights(self.layer_dimension, 1)
 
-        if self.dimension == '5s5s':
-            self.weights['w2'] = get_weights(self.layer_dimension, self.layer_dimension)
-            self.biases['b2'] = get_weights(self.layer_dimension, 1)
+            if self.dimension == '5s5s':
+                self.weights['w2'] = get_weights(self.layer_dimension, self.layer_dimension)
+                self.biases['b2'] = get_weights(self.layer_dimension, 1)
 
-        self.weights['w_out'] = get_weights(1, self.layer_dimension)
-        self.biases['b_out'] = get_weights(1, 1)
+            self.weights['w_out'] = get_weights(1, self.layer_dimension)
+            self.biases['b_out'] = get_weights(1, 1)
+
+        if train:
+            self.predict()
+
+    def set_weights_and_biases(self, key, w, b):
+        self.weights['w' + key] = w
+        self.biases['b' + key] = b
 
 
     def forward(self, x):
@@ -73,8 +84,54 @@ class NeuralNetwork:
 
         self.y_hat = self.forward(inputs)
 
-        self.err = (1 / len(self.y_hat)) * sum(
-            (y - y_h) ** 2 for y, y_h in zip(self.data[list(self.data.keys())[-1]], self.y_hat))
+        self.err = (1 / len(self.y_hat.tolist()[0])) * sum(
+            (y - y_h) ** 2 for y, y_h in zip(self.data[list(self.data.keys())[-1]], self.y_hat.tolist()[0]))
+        self.fitness = 1/self.err
+
+    def test_predict(self, data):
+        self.data = data
+        self.predict()
+
+
+def mutate(array, K, p):
+    add = np.where(np.random.rand(*array.shape) < p, np.random.normal(0, K, array.shape), 0)
+    return array + add
+
+
+def GenAlg(popsize, elitism, p, K, iter):
+    population = [NeuralNetwork(dim, train_data, True, True) for _ in range(popsize)]
+
+    for i in range(iter):
+        population = sorted(population, key=lambda nn: nn.fitness, reverse=True)
+        fitness = [nn.fitness for nn in population]
+        probabilities = [f/sum(fitness) for f in fitness]
+        new_population = [population[i] for i in range(elitism)]
+        used_pairs = set()
+
+        while len(new_population) != popsize:
+            pair = np.random.choice(population, size=2, replace=False, p=probabilities).tolist()
+            if tuple(sorted([pair[0].fitness, pair[1].fitness])) not in used_pairs:
+                used_pairs.add(tuple(sorted([pair[0].fitness, pair[1].fitness])))
+                child = NeuralNetwork(dim, train_data, False, False)
+                for key in ['1', '2', '_out']:
+                    if 'w' + key in pair[0].weights:
+                        child.set_weights_and_biases(key, (pair[0].weights['w' + key] + pair[1].weights['w' + key]) / 2, (pair[0].biases['b' + key] + pair[1].biases['b' + key]) / 2)
+
+                for key, value in child.weights.items():
+                    child.weights[key] = mutate(child.weights[key], K, p)
+
+                for key, value in child.biases.items():
+                    child.biases[key] = mutate(child.biases[key], K, p)
+
+                child.predict()
+                new_population.append(child)
+
+        population = copy.deepcopy(new_population)
+
+    population = sorted(population, key=lambda nn: nn.fitness, reverse=True)
+    print('[Train error @{}]: {:.6f}'.format(iter, population[0].err))
+    population[0].test_predict(test_data)
+    print('[Test error]: {:.6f}'.format(population[0].err))
 
 
 args = sys.argv[1:]
@@ -89,3 +146,5 @@ elitism = int(args[args.index('--elitism') + 1])
 p = float(args[args.index('--p') + 1])
 st_dev = float(args[args.index('--K') + 1])
 iterations = int(args[args.index('--iter') + 1])
+
+GenAlg(population_size, elitism, p, st_dev, iterations)

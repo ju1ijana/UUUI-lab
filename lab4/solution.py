@@ -1,7 +1,6 @@
 import sys
 import numpy as np
 
-
 def load_data(path):
     data = {}
     with open(path, 'r') as f:
@@ -43,12 +42,16 @@ class NeuralNetwork:
             self.weights['w2'] = get_weights(self.layer_dimension, self.layer_dimension)
             self.biases['b2'] = get_weights(self.layer_dimension, 1)
 
-        self.weights['w_out'] = get_weights(self.input_dimension, self.layer_dimension)
+        self.weights['w_out'] = get_weights(1, self.layer_dimension)
         self.biases['b_out'] = get_weights(1, 1)
 
 
     def forward(self, x):
-        x = np.array(x).reshape((2, 1)) if isinstance(x, tuple) else np.array([[x]])
+
+        x = np.array(x)
+
+        if x.ndim == 1:
+            x = x.reshape(1, -1)
 
         h = np.dot(self.weights['w1'], x) + self.biases['b1']
         sigmoid = 1 / (1 + np.exp(-h))
@@ -58,19 +61,20 @@ class NeuralNetwork:
             sigmoid = 1 / (1 + np.exp(-h))
 
         h = np.dot(self.weights['w_out'], sigmoid) + self.biases['b_out']
-        return h[0][0]
+
+        return h
 
 
     def predict(self):
         if self.input_dimension == 1:
-            inputs = self.data[self.columns[0]]
+            inputs = np.array(self.data[self.columns[0]]).T
         else:
-            inputs = zip(self.data[self.columns[0]], self.data[self.columns[1]])
+            inputs = np.array([self.data[self.columns[0]], self.data[self.columns[1]]])
 
-        for x in inputs:
-            self.y_hat.append(self.forward(x))
+        self.y_hat = self.forward(inputs)
 
-        self.err = (1 / len(self.y_hat)) * sum((y - y_h) ** 2 for y, y_h in zip(self.data[list(self.data.keys())[-1]], self.y_hat))
+        self.err = (1 / len(self.y_hat)) * sum(
+            (y - y_h) ** 2 for y, y_h in zip(self.data[list(self.data.keys())[-1]], self.y_hat))
 
 
 args = sys.argv[1:]

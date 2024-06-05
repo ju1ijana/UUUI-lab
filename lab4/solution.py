@@ -3,7 +3,7 @@ import copy
 import numpy as np
 
 
-def load_data(path):
+def load_data(path):                                                                        # funkcija za učitavanje podataka u rječnik
     data = {}
     with open(path, 'r') as f:
         lines = f.readlines()
@@ -23,10 +23,10 @@ def load_data(path):
 
 class NeuralNetwork:
     def __init__(self, dimension, data, set_weights_and_biases, train):
-        self.dimension = dimension
+        self.dimension = dimension                                                          # dimenzije slojeva neuronske mreže (argument funkcije)
         self.data = data
         self.columns = list(data.keys())[:-1]
-        self.layer_dimension = 5 if self.dimension in ['5s', '5s5s'] else 20
+        self.layer_dimension = 5 if self.dimension in ['5s', '5s5s'] else 20                # stvarne dimenzije slojeva
         self.input_dimension = len(self.columns)
         self.weights = {}
         self.biases = {}
@@ -48,12 +48,13 @@ class NeuralNetwork:
         if train:
             self.predict()
 
+
     def set_weights_and_biases(self, key, w, b):
         self.weights['w' + key] = w
         self.biases['b' + key] = b
 
 
-    def forward(self, x):
+    def forward(self, x):                                                       # unaprijedni prolaz svih ulaznih podataka odjednom
         x = np.array(x)
 
         if x.ndim == 1:
@@ -71,7 +72,7 @@ class NeuralNetwork:
         return h
 
 
-    def predict(self):
+    def predict(self):                                                          # priprema podataka za unaprijedni prolaz
         if self.input_dimension == 1:
             inputs = np.array(self.data[self.columns[0]]).T
         else:
@@ -79,18 +80,17 @@ class NeuralNetwork:
 
         self.y_hat = self.forward(inputs)
 
-        self.err = (1 / len(self.y_hat.tolist()[0])) * sum(
+        self.err = (1 / len(self.y_hat.tolist()[0])) * sum(                     # računanje srednjeg kvadratnog odstupanja (pogreške)
             (y - y_h) ** 2 for y, y_h in zip(self.data[list(self.data.keys())[-1]], self.y_hat.tolist()[0]))
         self.fitness = 1/self.err
+
 
     def test_predict(self, data):
         self.data = data
         self.predict()
 
 
-def mutate(array, K, p):
-    add = np.where(np.random.rand(*array.shape) < p, np.random.normal(0, K, array.shape), 0)
-    return array + add
+# ================================================================================================================================
 
 
 def GenAlg(popsize, elitism, p, K, iter):
@@ -106,10 +106,10 @@ def GenAlg(popsize, elitism, p, K, iter):
             pair = np.random.choice(population, size=2, replace=False, p=probabilities).tolist()
             child = NeuralNetwork(dim, train_data, False, False)
             for key in ['1', '2', '_out']:
-                if 'w' + key in pair[0].weights:
+                if 'w' + key in pair[0].weights:                                # postavljanje weights i biases na srednju vrijednost roditelja
                     child.set_weights_and_biases(key, (pair[0].weights['w' + key] + pair[1].weights['w' + key]) / 2, (pair[0].biases['b' + key] + pair[1].biases['b' + key]) / 2)
 
-            for key, value in child.weights.items():
+            for key, value in child.weights.items():                            # mutiranje weights i biases s vjerojatnosti p i prema normalnoj razdiobi
                 child.weights[key] = child.weights[key] + np.where(np.random.rand(*child.weights[key].shape) < p, np.random.normal(0, K, child.weights[key].shape), 0)
 
             for key, value in child.biases.items():
@@ -128,10 +128,10 @@ def GenAlg(popsize, elitism, p, K, iter):
 
 args = sys.argv[1:]
 
-train_data = load_data('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab4\\files\\' + args[args.index('--train') + 1])
+train_data = load_data(args[args.index('--train') + 1])
 dim = args[args.index('--nn') + 1]
 
-test_data = load_data('C:\\Users\\Julijana\\Documents\\uuui\\autograder\\data\\lab4\\files\\' + args[args.index('--test') + 1])
+test_data = load_data(args[args.index('--test') + 1])
 
 population_size = int(args[args.index('--popsize') + 1])
 elitism = int(args[args.index('--elitism') + 1])
